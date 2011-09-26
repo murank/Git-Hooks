@@ -44,6 +44,17 @@ test_commitmsg()
 {
     setup
 
+    local originBranch="$(git symbolic-ref HEAD | sed -e 's!^refs/heads/!!')"
+
+    git checkout -b "normal_branch" >/dev/null 2>&1
+    echo hoge > test4commitmsg
+    ./commit-msg test4commitmsg
+    assertEquals "hoge" "$(cat test4commitmsg)"
+
+    git checkout "$originBranch" >/dev/null 2>&1
+    git branch -D "normal_branch" >/dev/null 2>&1
+    rm test4commitmsg
+
     teardown
 }
 
