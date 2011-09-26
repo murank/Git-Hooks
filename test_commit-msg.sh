@@ -1,7 +1,22 @@
 #! /bin/sh
 
+setup()
+{
+    git commit -a -m "tmp commit for test_commit-msg.sh. PID $$" >/dev/null 2>&1
+}
+
+teardown()
+{
+    git log -1 --pretty=format:"%s" | grep "tmp commit for test_commit-msg.sh. PID $$" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        git reset HEAD^ >/dev/null 2>&1
+    fi
+}
+
 test_commitmsg()
 {
+    setup
+
     git checkout master >/dev/null 2>&1
     echo hoge > test4commitmsg
     ./commit-msg test4commitmsg
@@ -39,6 +54,8 @@ test_commitmsg()
     git branch -D "id/10/aaa" >/dev/null 2>&1
     git branch -D "a/id/0/b" >/dev/null 2>&1
     rm test4commitmsg
+
+    teardown
 }
 
 . ./shunit2/src/shell/shunit2
