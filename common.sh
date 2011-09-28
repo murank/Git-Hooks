@@ -32,10 +32,15 @@ appendMsgTo1stLine()
 
 extractTicketId()
 {
-    echo "$(getGitBranchName)" \
-    | awk 'BEGIN{ FS="[/]"}
-           $1 == "id" { printf "refs #%s", $2 }
-           $2 == "id" { printf "refs #%s", $3 }'
+    local confVar="$(git config hook.topicBranchFormat || echo 'id/%ID%')"
+    local branchFormat="$(echo $confVar | sed -e 's/%ID%/\\([0-9][0-9]*\\)/g' | sed -e 's!/!\\/!g')"
+
+    getGitBranchName | grep "^$branchFormat\$" >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        exit
+    fi
+
+    echo "echo '$(getGitBranchName)' | sed -e 's/$branchFormat/refs #\1/g'" | sh
 }
 
 hasTicketId()
