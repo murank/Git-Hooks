@@ -17,17 +17,21 @@ isOnMasterBranch()
 
 appendMsgTo1stLine()
 {
-    mv $1 $1.$$
-    if [ -s "$1.$$" ]; then
-    if head -1 "$1.$$" | grep "$2" > /dev/null; then
-        cp "$1.$$" "$1"
-    else
-            sed '1s/$/ '"$2"'/' "$1.$$" > $1
+    local msgFile="$1"
+    local msg="$2"
+
+    if [ ! -s "$msgFile" ]; then
+        echo "$msg" > "$msgFile"
+        return 0
     fi
-    else
-        echo "$2" > "$1"
+
+    head -1 "$msgFile" | grep "$msg" > /dev/null
+    if [ $? -eq 0 ]; then
+        return 0
     fi
-    rm -f $1.$$
+
+    sed "1s/\$/ $msg/" "$msgFile" > "$msgFile.$$"
+    mv "$msgFile.$$" "$msgFile"
 }
 
 getConfigValue()
