@@ -68,6 +68,14 @@ test_commitmsg()
     ./commit-msg test4commitmsg
     assertEquals "hoge refs #16" "$(cat test4commitmsg)"
 
+    git config --local --unset hook.topicBranchFormat
+    git config --local hook.msg4TopicBranch "#%ID%"
+
+    git checkout "id/14" >/dev/null 2>&1
+    echo hoge > test4commitmsg
+    ./commit-msg test4commitmsg
+    assertEquals "hoge #14" "$(cat test4commitmsg)"
+
     git checkout "$originBranch" >/dev/null 2>&1
     git branch -D "normal_branch" >/dev/null 2>&1
     git branch -D "id/14" >/dev/null 2>&1
