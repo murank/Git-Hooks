@@ -40,12 +40,13 @@ getConfigValue()
 
 replaceMarker()
 {
-    sed -e 's/%ID%/\\([0-9][0-9]*\\)/g' | sed -e 's!/!\\/!g'
+    local replacement="$1"
+    sed -e "s/%ID%/$replacement/g" | sed -e 's!/!\\/!g'
 }
 
 extractTicketId()
 {
-    local branchFormat="$(getConfigValue hook.topicBranchFormat 'id/%ID%' | replaceMarker)"
+    local branchFormat="$(getConfigValue hook.topicBranchFormat 'id/%ID%' | replaceMarker '\\([0-9][0-9]*\\)')"
 
     getGitBranchName | grep "^$branchFormat\$" >/dev/null 2>&1
     if [ $? -ne 0 ]; then
