@@ -76,6 +76,10 @@ test_commitmsg()
     ./commit-msg test4commitmsg
     assertEquals "hoge #14" "$(cat test4commitmsg)"
 
+    echo -e "hoge\nfoo" > test4commitmsg
+    ./commit-msg test4commitmsg
+    assertEquals "$(echo -e 'hoge #14\nfoo')" "$(cat test4commitmsg)"
+
     git checkout "$originBranch" >/dev/null 2>&1
     git branch -D "normal_branch" >/dev/null 2>&1
     git branch -D "id/14" >/dev/null 2>&1
