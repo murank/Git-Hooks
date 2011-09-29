@@ -30,10 +30,17 @@ appendMsgTo1stLine()
     rm -f $1.$$
 }
 
+getConfigValue()
+{
+    local key="$1"
+    local defaultValue="$2"
+
+    git config "$key" || echo "$defaultValue"
+}
+
 extractTicketId()
 {
-    local confVar="$(git config hook.topicBranchFormat || echo 'id/%ID%')"
-    local branchFormat="$(echo $confVar | sed -e 's/%ID%/\\([0-9][0-9]*\\)/g' | sed -e 's!/!\\/!g')"
+    local branchFormat="$(getConfigValue hook.topicBranchFormat 'id/%ID%' | sed -e 's/%ID%/\\([0-9][0-9]*\\)/g' | sed -e 's!/!\\/!g')"
 
     getGitBranchName | grep "^$branchFormat\$" >/dev/null 2>&1
     if [ $? -ne 0 ]; then
