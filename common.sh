@@ -38,9 +38,14 @@ getConfigValue()
     git config "$key" || echo "$defaultValue"
 }
 
+replaceMarker()
+{
+    sed -e 's/%ID%/\\([0-9][0-9]*\\)/g' | sed -e 's!/!\\/!g'
+}
+
 extractTicketId()
 {
-    local branchFormat="$(getConfigValue hook.topicBranchFormat 'id/%ID%' | sed -e 's/%ID%/\\([0-9][0-9]*\\)/g' | sed -e 's!/!\\/!g')"
+    local branchFormat="$(getConfigValue hook.topicBranchFormat 'id/%ID%' | replaceMarker)"
 
     getGitBranchName | grep "^$branchFormat\$" >/dev/null 2>&1
     if [ $? -ne 0 ]; then
