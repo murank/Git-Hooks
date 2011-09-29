@@ -47,13 +47,14 @@ replaceMarker()
 extractTicketId()
 {
     local branchFormat="$(getConfigValue hook.topicBranchFormat 'id/%ID%' | replaceMarker '\\([0-9][0-9]*\\)')"
+    local msgFormat="$(getConfigValue hook.msg4TopicBranch 'refs #%ID%' | replaceMarker '\\1')"
 
     getGitBranchName | grep "^$branchFormat\$" >/dev/null 2>&1
     if [ $? -ne 0 ]; then
         exit
     fi
 
-    echo "echo '$(getGitBranchName)' | sed -e 's/$branchFormat/refs #\1/g'" | sh
+    echo "echo '$(getGitBranchName)' | sed -e 's/$branchFormat/$msgFormat/g'" | sh
 }
 
 hasTicketId()
