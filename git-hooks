@@ -1,0 +1,269 @@
+#!/bin/sh
+
+confKey="hook.remoteURL"
+
+NEW=0
+OVERRIDE=1
+RENAME=2
+SKIP=3
+
+usage()
+{
+    echo "usage: git hooks <command> [remoteURL]"
+    echo
+    echo "Available commands are:"
+    echo -e "   install\tInstall hooks into the current git repository"
+    echo -e "   update\tUpdate this script"
+}
+
+ask_yesno()
+{
+    local msg="$1"
+
+    while true; do
+
+        echo -n "$msg? [y]/n: "
+        read ret
+
+        if [ -z "$ret" ]; then
+            ret="y"
+        fi
+
+        case "$ret" in
+            "y") return 0;;
+            "n") return 1;;
+        esac
+
+    done
+}
+
+ask_override()
+{
+    local target="$1"
+
+    if [ ! -e "$target" ]; then
+        return $NEW
+    fi
+
+    echo "old '$script' found."
+    while true; do
+
+        echo -n "[o]verride/[r]ename/[s]kip it? (default: override): "
+        read ret
+
+        if [ -z "$ret" ]; then
+            ret="o"
+        fi
+
+        case "$ret" in
+            "o" | "override") return $OVERRIDE;;
+            "r" | "rename") return $RENAME;;
+            "s" | "skip") return $SKIP;;
+        esac
+
+    done
+}
+
+# return value:
+# 0: succeeded to install
+# 1: override old script
+# 2: rename old script
+# 3: skip installation
+install_script()
+{
+    local url="$1"
+    local script="$2"
+
+    ask_yesno "install $script"
+    if [ $? -ne 0 ]; then
+        return $SKIP
+    fi
+
+    local target="$(git rev-parse --git-dir)/hooks/$script"
+
+    ask_override "$target"
+    local action=$?
+
+    if [ $action -eq $SKIP ]; then
+        return $SKIP
+    fi
+    if [ $action -gt $NEW ]; then
+        if ! mv "$target" "$target.bak.$$"; then
+            return 129
+        fi
+    fi
+
+    code=$(curl -# -w '%{http_code}' -o "$target" "$url/$script")
+    if [ $? -ne 0 -o "$code" != "200" ]; then
+        echo "fail to download '$script' (code: $code)" >&2
+        return 128
+    fi
+
+    echo "done."
+    echo
+
+    return $action
+}
+
+revert_old_scripts()
+{
+    local scripts="$1"
+    local targetDir="$(git rev-parse --git-dir)/hooks"
+
+    for s in $scripts; do
+        rm "$targetDir/$s" >/dev/null 2>&1
+        mv "$targetDir/$s.bak.$$" "$targetDir/$s" >/dev/null 2>&1
+    done
+}
+
+remove_old_scripts()
+{
+    local scripts="$1"
+    local targetDir="$(git rev-parse --git-dir)/hooks"
+
+    for s in $scripts; do
+        rm "$targetDir/$s.bak.$$" >/dev/null 2>&1
+    done
+}
+
+install_scripts()
+{
+    local url="$1"
+    local scripts="$2"
+    local removeOnFailed=""
+    local removeOnSuccess=""
+
+    for s in $scripts; do
+        install_script "$url" "$s"
+
+        case $? in
+            "$NEW") removeOnFailed="$removeOnFailed $s";;
+            "$OVERRIDE") removeOnFailed="$removeOnFailed $s"; removeOnSuccess="$removeOnSuccess $s";;
+            "$RENAME") removeOnFailed="$removeOnFailed $s";;
+            "$SKIP") ;;
+            *) revert_old_scripts "$removeOnFailed $s"; return 1;;
+        esac
+
+    done
+
+    remove_old_scripts "$removeOnSuccess"
+    return 0
+}
+
+cmd_install()
+{
+    local isBare="$(git rev-parse --is-bare-repository)"
+    if [ $? -ne 0 ]; then
+        exit 2
+    fi
+
+    if [ "$isBare" = "true" ]; then
+        local scripts="update"
+    else
+        local scripts="commit-msg pre-commit common.sh"
+    fi
+
+    local url="$1"
+
+    echo "install hooks from $url"
+    echo
+
+    if install_scripts "$url" "$scripts"; then
+        echo
+        echo "Successfully installed hooks. ($scripts)"
+        echo
+        return 0
+    else
+        echo
+        echo "Fail to install hooks. ($scripts)"
+        echo
+        return 1
+    fi
+}
+
+update_script()
+{
+    local url="$1"
+    local script="$2"
+
+    echo "update git-hooks from $url"
+    echo
+
+    ask_yesno "update $script"
+    if [ $? -ne 0 ]; then
+        return $SKIP
+    fi
+
+    local target="$0"
+
+    ask_override "$target"
+    local action=$?
+
+    if [ $action -eq $SKIP ]; then
+        return $SKIP
+    fi
+    if [ $action -gt $NEW ]; then
+        if ! mv "$target" "$target.bak.$$"; then
+            return 129
+        fi
+    fi
+
+    code=$(curl -# -w '%{http_code}' -o "$target" "$url/$script")
+    if [ $? -ne 0 -o "$code" != "200" ]; then
+        echo "fail to download '$script' (code: $code)" >&2
+        rm "$target" >/dev/null 2>&1
+        mv "$target.bak.$$" "$target" >/dev/null 2>&1
+        return 128
+    fi
+
+    chmod +x "$target"
+
+    if [ $action -eq $OVERRIDE ]; then
+        rm "$target.bak.$$"
+    fi
+
+    echo
+    echo "Successfully updated git-hooks."
+    echo
+
+    return $action
+}
+
+cmd_update()
+{
+    local url="$1"
+    local script="git-hooks"
+
+    update_script "$url" "$script"
+}
+
+if [ $# -eq 0 -o $# -gt 2 -o "$1" = "-h" ]; then
+    usage
+    exit 1
+fi
+
+if [ $# -eq 2 ]; then
+    remoteURL="$2"
+else
+    remoteURL="$(git config hook.remoteURL)"
+fi
+
+if [ -z "$remoteURL" ]; then
+    echo "No remote url specified." >&2
+    echo "Please specify the parameter or set 'git config $confKey'"
+    exit 2
+fi
+
+case $1 in
+    "install")
+        cmd_install "$remoteURL"
+        ;;
+    "update")
+        cmd_update "$remoteURL"
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac
+
