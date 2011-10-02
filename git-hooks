@@ -64,6 +64,23 @@ ask_override()
     done
 }
 
+download_script()
+{
+    local target="$1"
+    local url="$2"
+
+    if [ "$(git config http.sslVerify)" = "false" ]; then
+        local curlOpt="-k"
+    fi
+    local code=$(curl $curlOpt -# -w '%{http_code}' -o "$target" "$url")
+    if [ $? -ne 0 -o "$code" != "200" ]; then
+        echo "fail to download '$url' (code: $code)" >&2
+        return 1
+    fi
+
+    return 0
+}
+
 # return value:
 # 0: succeeded to install
 # 1: override old script
@@ -93,12 +110,7 @@ install_script()
         fi
     fi
 
-    if [ "$(git config http.sslVerify)" = "false" ]; then
-        local curlOpt="-k"
-    fi
-    code=$(curl $curlOpt -# -w '%{http_code}' -o "$target" "$url/$script")
-    if [ $? -ne 0 -o "$code" != "200" ]; then
-        echo "fail to download '$script' (code: $code)" >&2
+    if ! download_script "$target" "$url/$script"; then
         return 128
     fi
 
@@ -211,12 +223,7 @@ update_script()
         fi
     fi
 
-    if [ "$(git config http.sslVerify)" = "false" ]; then
-        local curlOpt="-k"
-    fi
-    code=$(curl $curlOpt -# -w '%{http_code}' -o "$target" "$url/$script")
-    if [ $? -ne 0 -o "$code" != "200" ]; then
-        echo "fail to download '$script' (code: $code)" >&2
+    if ! download_script "$target" "$url/$script"; then
         rm "$target" >/dev/null 2>&1
         mv "$target.bak.$$" "$target" >/dev/null 2>&1
         return 128
