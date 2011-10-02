@@ -93,7 +93,10 @@ install_script()
         fi
     fi
 
-    code=$(curl -# -w '%{http_code}' -o "$target" "$url/$script")
+    if [ "$(git config http.sslVerify)" = "false" ]; then
+        local curlOpt="-k"
+    fi
+    code=$(curl $curlOpt -# -w '%{http_code}' -o "$target" "$url/$script")
     if [ $? -ne 0 -o "$code" != "200" ]; then
         echo "fail to download '$script' (code: $code)" >&2
         return 128
@@ -208,7 +211,10 @@ update_script()
         fi
     fi
 
-    code=$(curl -# -w '%{http_code}' -o "$target" "$url/$script")
+    if [ "$(git config http.sslVerify)" = "false" ]; then
+        local curlOpt="-k"
+    fi
+    code=$(curl $curlOpt -# -w '%{http_code}' -o "$target" "$url/$script")
     if [ $? -ne 0 -o "$code" != "200" ]; then
         echo "fail to download '$script' (code: $code)" >&2
         rm "$target" >/dev/null 2>&1
