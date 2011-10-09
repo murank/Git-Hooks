@@ -16,6 +16,13 @@ Extract ticket ID from the name of the current branch,
 and insert it to the first line of a commit message.
 The formats of a branch name and a message to be inserted are configurable.
 
+* __prepare-commit-msg__ (for normal repository):  
+Show diff of the current commit when editing its commit message.
+
+ NB: the messages of the commits with -c or -C options won't include the diff,
+since we cannot distinguish the options
+(one can ignore the additional information but the other cannot).
+
 * __common.sh__ (for normal repository):  
 Common functions for pre-commit and commit-msg.
 
