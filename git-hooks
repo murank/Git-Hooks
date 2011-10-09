@@ -175,7 +175,7 @@ cmd_install()
     if [ "$isBare" = "true" ]; then
         local scripts="update"
     else
-        local scripts="commit-msg pre-commit common.sh"
+        local scripts="commit-msg pre-commit prepare-commit-msg common.sh"
     fi
 
     local url="$1"
